@@ -7,7 +7,7 @@ CacheDLL = getattr(cache_dll_module, 'CacheDoubleLinkedList')
 DLLNode = getattr(cache_dll_module, 'Node')
 
 
-def listen_for_calls():
+def listen_for_calls(cache_dll, cache_dict):
     server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     server_socket.bind(('localhost', 8730))
 
@@ -16,11 +16,14 @@ def listen_for_calls():
         print("Running...")
         client_socket, address = server_socket.accept()
         data = client_socket.recv(1024)
+        additional_data = client_socket.recv(1024)
         count = 1
-        while data:
-            print("{}: {}".format(count,data))
+        while additional_data:
             count += 1
-            data = client_socket.recv(1024)
+            additional_data = client_socket.recv(1024)
+            data += additional_data
+        print("{}: {}".format(count, data))
+        print(check_cache(data, cache_dll, cache_dict))
         client_socket.close()
 
 
@@ -40,7 +43,7 @@ def check_cache(key, cache_dll, cache_dict):
 
 
 if __name__ == "__main__":
-    dll = CacheDLL()
-    pages_dict = {}
+    lru_dll = CacheDLL()
+    lru_dict = {}
 
-    listen_for_calls()
+    listen_for_calls(lru_dll, lru_dict)
