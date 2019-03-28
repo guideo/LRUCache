@@ -9,11 +9,11 @@ class Node:
 
 
 class CacheDoubleLinkedList:
-    def __init__(self):
+    def __init__(self, max_size):
         self.head = None
         self.tail = None
         self.size = 0
-        self.max_size = 3
+        self.max_size = max_size
 
     def delete_last(self):
         self.size -= 1

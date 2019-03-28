@@ -43,7 +43,7 @@ def check_cache(key, cache_dll, cache_dict):
 
 
 if __name__ == "__main__":
-    lru_dll = CacheDLL()
+    lru_dll = CacheDLL(3)
     lru_dict = {}
 
     listen_for_calls(lru_dll, lru_dict)
