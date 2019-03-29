@@ -1,15 +1,13 @@
 import socket
-import time
 import importlib
 import sqlite3
 from threading import Thread
 
-cache_dll_module = importlib.import_module('CacheDoubleLinkedList')
-CacheDLL = getattr(cache_dll_module, 'CacheDoubleLinkedList')
-DLLNode = getattr(cache_dll_module, 'Node')
+cache_module = importlib.import_module('LRU_cache')
+Cache = getattr(cache_module, 'Cache')
 
 
-def listen_for_calls(connection):
+def listen_for_calls(lru_cache, connection):
     server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     server_socket.bind(('localhost', 8741))
 
@@ -24,18 +22,30 @@ def listen_for_calls(connection):
         data = data.decode()
         print("Received request: {}".format(data))
 
-        data = get_from_db(connection, data)
-        client_socket.sendall(data.encode())
+        if data == 'NewCacheStarting':
+            init_data = ''
+            client_socket.sendall(init_data.encode())
+            pass
+        elif 'HitUpdate' in data:
+            pass
+        else:
+            data = lru_cache.get_data_from_db(data)
+            client_socket.sendall(data.encode())
+
         client_socket.close()
 
 
-def get_from_db(connection, data):
-    c = connection.cursor()
-    c.execute('SELECT * FROM users WHERE name="{}"'.format(data))
-    return str(c.fetchall())
+def update_distributed_caches(cache_list, update):
+    for c in cache_list:
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.connect((c['address'], c['port']))
+        sock.sendall(update.encode())
+        sock.close()
 
 
 if __name__ == "__main__":
     conn = sqlite3.connect('ormuco_db.sqlite')
 
-    listen_for_calls(conn)
+    cache = Cache(master=True, db_connection=conn)
+
+    listen_for_calls(cache, conn)
