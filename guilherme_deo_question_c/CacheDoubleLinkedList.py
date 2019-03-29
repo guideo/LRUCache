@@ -2,9 +2,10 @@ import gc
 
 
 class Node:
-    def __init__(self, prev_node=None, next_node=None, data=None):
+    def __init__(self, prev_node=None, next_node=None, key=None, data=None):
         self.prev_node = prev_node
         self.next_node = next_node
+        self.key = key
         self.data = data
 
 
@@ -17,11 +18,11 @@ class CacheDoubleLinkedList:
 
     def delete_last(self):
         self.size -= 1
-        deleted_data = self.tail.data
+        deleted_ele = self.tail.key
         self.tail = self.tail.prev_node
         self.tail.next_node = None
         gc.collect()
-        return deleted_data
+        return deleted_ele
 
     def hit(self, node):
         if node == self.head:
@@ -59,7 +60,7 @@ class CacheDoubleLinkedList:
         traverse = self.head
         output = ''
         while traverse:
-            output += str(traverse.data)
+            output += str(traverse.key)
             if traverse != self.tail:
                 output += ' <---> '
             traverse = traverse.next_node
