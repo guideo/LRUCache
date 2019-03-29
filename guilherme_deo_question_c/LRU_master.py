@@ -2,6 +2,7 @@ import socket
 import time
 import importlib
 import sqlite3
+from threading import Thread
 
 cache_dll_module = importlib.import_module('CacheDoubleLinkedList')
 CacheDLL = getattr(cache_dll_module, 'CacheDoubleLinkedList')
@@ -17,6 +18,8 @@ def listen_for_calls(connection):
         print("Running Master...")
 
         client_socket, address = server_socket.accept()
+        print(server_socket)
+        print(client_socket)
         data = client_socket.recv(1024)
         data = data.decode()
         print("Received request: {}".format(data))

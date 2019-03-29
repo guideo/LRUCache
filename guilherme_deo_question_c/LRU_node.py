@@ -9,12 +9,14 @@ DLLNode = getattr(cache_dll_module, 'Node')
 
 def listen_for_calls(cache_dll, cache_dict):
     server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    server_socket.bind(('localhost', 8730))
+    server_socket.bind(('192.168.15.10', 8730))
 
     server_socket.listen(5)
     while True:
         print("Running...")
         client_socket, address = server_socket.accept()
+        print(client_socket)
+        print(address)
         data = client_socket.recv(1024)
         data = data.decode()
         print("Data: {}".format(data))
@@ -24,8 +26,6 @@ def listen_for_calls(cache_dll, cache_dict):
 
 
 def check_cache(key, cache_dll, cache_dict):
-    print(cache_dll)
-    print(cache_dict)
     if key in cache_dict:
         element = cache_dict[key]['element']
         cache_dict[key]['timestamp'] = time.time()
@@ -33,7 +33,7 @@ def check_cache(key, cache_dll, cache_dict):
         return element.data
     else:
         data = request_data_from_db(key)
-        if data is not None:
+        if data is not None and data != '[]':
             new_node = DLLNode(key=key, data=data)
             last_ele = cache_dll.fault(new_node)
             if last_ele is not None:
@@ -56,6 +56,7 @@ def request_data_from_db(key):
         print("CONNECTION REFUSED - Server is busy. \nERROR: {}".format(e))
     if data is not None:
         data = data.decode()
+    print(data)
     return data
 
 
