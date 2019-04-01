@@ -6,7 +6,7 @@ if __name__ == "__main__":
         try:
             data = input('Message to send: ')
             sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            sock.connect(('192.168.15.10', 8730))
+            sock.connect(('localhost', 8732))
             sock.sendall(data.encode())
             print("Sent data: {}".format(data))
             data = sock.recv(1024)
