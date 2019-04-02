@@ -43,32 +43,43 @@ class Cache:
         self.cache_dll = CacheDLL(self.max_size)
         self.cache_dict = {}
 
+    def clear_outdated_data(self):
+        node = self.cache_dll.tail
+        while node and (time.time() - 30) > self.cache_dict[node.key]['timestamp']:
+            print(self.cache_dict[node.key]['timestamp'])
+            print(time.time() + 30)
+            removed_ele = self.cache_dll.delete_last()
+            print('Clearing outdated data: {}'.format(removed_ele))
+            self.cache_dict.pop(removed_ele)
+            node = self.cache_dll.tail
+
     def check_cache(self, key, update_data=None):
-        if key in self.cache_dict:
-            if not self.master and update_data is None:
-                self.update_master_hit(key)
-            with self.lock:
+        with self.lock:
+            self.clear_outdated_data()
+            if key in self.cache_dict:
+                if not self.master and update_data is None:
+                    self.update_master_hit(key)
+
                 element = self.cache_dict[key]['element']
                 self.cache_dict[key]['timestamp'] = time.time()
                 self.cache_dll.hit(element)
                 return element.data
-        else:
-            if update_data is not None:
-                data = update_data
-            elif self.master:
-                data = self.get_data_from_db(key)
             else:
-                data = self.request_data_from_db(key)
-            if data is not None and data != 'Object not found!':
-                with self.lock:
+                if update_data is not None:
+                    data = update_data
+                elif self.master:
+                    data = self.get_data_from_db(key)
+                else:
+                    data = self.request_data_from_db(key)
+                if data is not None and data != 'Object not found!':
                     new_node = DLLNode(key=key, data=data)
                     last_ele = self.cache_dll.fault(new_node)
                     if last_ele is not None:
                         self.cache_dict.pop(last_ele)
                     self.cache_dict[key] = {'element': new_node, 'timestamp': time.time()}
                     return new_node.data
-            else:
-                return "Object not found!"
+                else:
+                    return "Object not found!"
 
     def update_master_hit(self, key):
         try:

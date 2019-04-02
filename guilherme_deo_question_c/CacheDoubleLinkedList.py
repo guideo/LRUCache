@@ -20,7 +20,10 @@ class CacheDoubleLinkedList:
         self.size -= 1
         deleted_ele = self.tail.key
         self.tail = self.tail.prev_node
-        self.tail.next_node = None
+        if self.size == 0:
+            self.head = None
+        else:
+            self.tail.next_node = None
         gc.collect()
         return deleted_ele
 
