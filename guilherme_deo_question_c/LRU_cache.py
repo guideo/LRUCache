@@ -4,6 +4,7 @@ import socket
 import uuid
 import json
 import pickle
+import sqlite3
 from threading import Lock
 
 cache_dll_module = importlib.import_module('CacheDoubleLinkedList')
@@ -34,20 +35,29 @@ class CacheMessage:
 
 class Cache:
 
-    def __init__(self, size, master=False, db_connection=None):
+    def __init__(self, master=False):
         self.cache_id = uuid.uuid4().hex
         self.master = master
-        self.db_connection = db_connection
         self.lock = Lock()
-        self.max_size = size
-        self.cache_dll = CacheDLL(self.max_size)
         self.cache_dict = {}
+
+        with open('LRU.config') as json_file:
+            config_data = json.load(json_file)
+
+            if self.master:
+                self.db_connection = sqlite3.connect(config_data['db'])
+            else:
+                self.db_connection = None
+            self.max_size = config_data['max_size_of_cache']
+            self.cache_dll = CacheDLL(self.max_size)
+            self.expiration_seconds = config_data['cache_expiration_time_seconds']
+            self.master_address = config_data['master_address']
+            self.master_port = config_data['master_port']
+            self.data_size = config_data['max_size_of_data']
 
     def clear_outdated_data(self):
         node = self.cache_dll.tail
-        while node and (time.time() - 30) > self.cache_dict[node.key]['timestamp']:
-            print(self.cache_dict[node.key]['timestamp'])
-            print(time.time() + 30)
+        while node and (time.time() - self.expiration_seconds) > self.cache_dict[node.key]['timestamp']:
             removed_ele = self.cache_dll.delete_last()
             print('Clearing outdated data: {}'.format(removed_ele))
             self.cache_dict.pop(removed_ele)
@@ -84,7 +94,7 @@ class Cache:
     def update_master_hit(self, key):
         try:
             db_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            db_socket.connect(('localhost', 8741))
+            db_socket.connect((self.master_address, self.master_port))
             db_socket.sendall(pickle.dumps({'id': self.cache_id,
                                             'request_type': 'HitUpdate',
                                             'key': key}))
@@ -97,9 +107,9 @@ class Cache:
         data = None
         try:
             db_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            db_socket.connect(('localhost', 8741))
+            db_socket.connect((self.master_address, self.master_port))
             db_socket.sendall(pickle.dumps({'id': self.cache_id, 'key': key}))
-            data = db_socket.recv(1024)
+            data = db_socket.recv(self.data_size)
         except ConnectionRefusedError as e:
             print("CONNECTION REFUSED - Server is busy. \nERROR: {}".format(e))
         finally:

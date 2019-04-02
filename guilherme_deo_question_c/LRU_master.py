@@ -1,7 +1,5 @@
 import socket
 import importlib
-import sqlite3
-import re
 import pickle
 
 cache_module = importlib.import_module('LRU_cache')
@@ -10,22 +8,21 @@ Cache = getattr(cache_module, 'Cache')
 
 class CacheMaster:
 
-    def __init__(self, size, db_conn):
+    def __init__(self):
         self.cache_list = {}
         self.cache_lookup = {}
-        self.cache_size = size
-        self.lru_cache = Cache(self.cache_size, master=True, db_connection=db_conn)
+        self.lru_cache = Cache(master=True)
 
     def listen_for_calls(self):
         server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        server_socket.bind(('localhost', 8741))
+        server_socket.bind((self.lru_cache.master_address, self.lru_cache.master_port))
 
         server_socket.listen(5)
         while True:
             print("Running Master...")
 
             client_socket, address = server_socket.accept()
-            data = client_socket.recv(1024)
+            data = client_socket.recv(self.lru_cache.data_size)
             data = pickle.loads(data)
             node_id = data['id']
             return_data = ''
@@ -78,8 +75,6 @@ class CacheMaster:
 
 
 if __name__ == "__main__":
-    conn = sqlite3.connect('ormuco_db.sqlite')
-
-    cache_master = CacheMaster(3, conn)
+    cache_master = CacheMaster()
 
     cache_master.listen_for_calls()

@@ -20,11 +20,10 @@ def parse_input(args):
 
 class CacheNode:
 
-    def __init__(self, size, address, port):
-        self.cache_size = size
+    def __init__(self, address, port):
         self.port = port
         self.address = address
-        self.lru_cache = Cache(self.cache_size)
+        self.lru_cache = Cache()
 
     def listen_for_calls(self):
         server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -34,7 +33,7 @@ class CacheNode:
         while True:
             print("Running...")
             client_socket, address = server_socket.accept()
-            data = client_socket.recv(1024)
+            data = client_socket.recv(self.lru_cache.data_size)
             data = pickle.loads(data)
             if data['key'] == "print":
                 print(self.lru_cache.cache_dll)
@@ -53,7 +52,7 @@ class CacheNode:
         while True:
             print("Waiting for updates...")
             client_socket, address = server_socket.accept()
-            data = client_socket.recv(1024)
+            data = client_socket.recv(self.lru_cache.data_size)
             data = pickle.loads(data)
             print("Data: {}".format(data))
             if data['id'] == self.lru_cache.cache_id:
@@ -65,12 +64,12 @@ class CacheNode:
     def init_cache(self):
         try:
             db_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            db_socket.connect(('localhost', 8741))
+            db_socket.connect((self.lru_cache.master_address, self.lru_cache.master_port))
             db_socket.sendall(pickle.dumps({'id': self.lru_cache.cache_id,
                                             'request_type': 'NewCacheStarting',
                                             'address': self.address,
                                             'port': self.port}))
-            data = db_socket.recv(1024 * self.cache_size)
+            data = db_socket.recv(self.lru_cache.data_size * self.lru_cache.max_size)
         except ConnectionRefusedError as e:
             print("CONNECTION REFUSED - Server is busy. \nERROR: {}".format(e))
         finally:
@@ -83,7 +82,7 @@ class CacheNode:
 
 if __name__ == "__main__":
     info = parse_input(sys.argv[1:])
-    cache_node = CacheNode(3, info.address, info.port)
+    cache_node = CacheNode(info.address, info.port)
 
     cache_node.init_cache()
 
