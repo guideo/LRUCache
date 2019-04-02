@@ -1,8 +1,9 @@
 import importlib
 import time
 import socket
-import re
 import uuid
+import json
+import pickle
 from threading import Lock
 
 cache_dll_module = importlib.import_module('CacheDoubleLinkedList')
@@ -21,7 +22,9 @@ class Cache:
         self.cache_dll = CacheDLL(self.max_size)
         self.cache_dict = {}
 
-    def check_cache(self, key):
+    def check_cache(self, key, update_data=None):
+        print(key)
+        print(update_data)
         if key in self.cache_dict:
             if not self.master:
                 self.update_master_hit(key)
@@ -31,7 +34,9 @@ class Cache:
                 self.cache_dll.hit(element)
                 return element.data
         else:
-            if self.master:
+            if update_data is not None:
+                data = update_data
+            elif self.master:
                 data = self.get_data_from_db(key)
             else:
                 data = self.request_data_from_db(key)
@@ -50,7 +55,9 @@ class Cache:
         try:
             db_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             db_socket.connect(('localhost', 8741))
-            db_socket.sendall('{}:HitUpdate:{}'.format(self.cache_id, key).encode())
+            db_socket.sendall(pickle.dumps({'id': self.cache_id,
+                                            'request_type': 'HitUpdate',
+                                            'key': key}))
             db_socket.close()
         except ConnectionRefusedError as e:
             print("CONNECTION REFUSED - Server is busy. \nERROR: {}".format(e))
@@ -60,14 +67,14 @@ class Cache:
         try:
             db_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             db_socket.connect(('localhost', 8741))
-            db_socket.sendall('{}:{}'.format(self.cache_id, key).encode())
+            db_socket.sendall(pickle.dumps({'id': self.cache_id, 'key': key}))
             data = db_socket.recv(1024)
             db_socket.close()
         except ConnectionRefusedError as e:
             print("CONNECTION REFUSED - Server is busy. \nERROR: {}".format(e))
         if data is not None:
-            data = data.decode()
-        return data
+            data = pickle.loads(data)
+        return data['data']
 
     def get_data_from_db(self, key):
         c = self.db_connection.cursor()
@@ -76,18 +83,15 @@ class Cache:
 
     def __str__(self):
         node = self.cache_dll.tail
-        output = ''
+        output = {}
         while node:
-            output += '(<{}>, <{}>)'.format(node.key, node.data)
+            output[node.key] = node.data
             node = node.prev_node
-        return output
+        return json.dumps(output)
 
     def build(self, string_representation):
-        ele_list = re.findall(r'(\(<.*?>\))', string_representation)
-        for ele in ele_list:
-            match = re.match(r'\(<(.*?)>, <(.*?)>\)', ele)
-            key = match.group(1)
-            data = match.group(2)
+        ele_dict = json.loads(string_representation)
+        for key, data in ele_dict.items():
             new_node = DLLNode(key=key, data=data)
             self.cache_dll.fault(new_node)
             self.cache_dict[key] = {'element': new_node, 'timestamp': time.time()}

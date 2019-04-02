@@ -2,6 +2,7 @@ import socket
 import importlib
 import argparse
 import sys
+import pickle
 from threading import Thread
 
 cache_module = importlib.import_module('LRU_cache')
@@ -34,13 +35,14 @@ class CacheNode:
             print("Running...")
             client_socket, address = server_socket.accept()
             data = client_socket.recv(1024)
-            data = data.decode()
-            if data == "print":
+            data = pickle.loads(data)
+            if data['key'] == "print":
                 print(self.lru_cache.cache_dll)
             else:
-                print("Data: {}".format(data))
-                return_data = self.lru_cache.check_cache(data)
-                client_socket.sendall(return_data.encode())
+                print("Data: {}".format(data['key']))
+                return_data = self.lru_cache.check_cache(data['key'])
+                print('return data: {}'.format(return_data))
+                client_socket.sendall(pickle.dumps({'data': return_data}))
             client_socket.close()
 
     def listen_for_updates(self):
@@ -52,23 +54,26 @@ class CacheNode:
             print("Waiting for updates...")
             client_socket, address = server_socket.accept()
             data = client_socket.recv(1024)
-            data = data.decode()
+            data = pickle.loads(data)
             print("Data: {}".format(data))
-            self.lru_cache.check_cache(data)
+            self.lru_cache.check_cache(data['key'], data['data'])
             client_socket.close()
 
     def init_cache(self):
         try:
             db_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             db_socket.connect(('localhost', 8741))
-            db_socket.sendall('{}:NewCacheStarting {}:{}'.format(self.lru_cache.cache_id, self.address, self.port).encode())
+            db_socket.sendall(pickle.dumps({'id': self.lru_cache.cache_id,
+                                            'request_type': 'NewCacheStarting',
+                                            'address': self.address,
+                                            'port': self.port}))
             data = db_socket.recv(1024 * self.cache_size)
             db_socket.close()
         except ConnectionRefusedError as e:
             print("CONNECTION REFUSED - Server is busy. \nERROR: {}".format(e))
         if data is not None:
-            data = data.decode()
-        self.lru_cache.build(data)
+            data = pickle.loads(data)
+        self.lru_cache.build(data['data'])
         print(data)
 
 

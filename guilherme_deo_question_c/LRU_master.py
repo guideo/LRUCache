@@ -2,7 +2,7 @@ import socket
 import importlib
 import sqlite3
 import re
-from threading import Thread
+import pickle
 
 cache_module = importlib.import_module('LRU_cache')
 Cache = getattr(cache_module, 'Cache')
@@ -25,40 +25,36 @@ class CacheMaster:
 
             client_socket, address = server_socket.accept()
             data = client_socket.recv(1024)
-            data = data.decode()
-            match = re.match(r'(.*?):(.*)', data)
-            node_origin = match.group(1)
-            data = match.group(2)
+            data = pickle.loads(data)
+            node_id = data['id']
             return_data = ''
             print("Received request: {}".format(data))
 
-            if 'NewCacheStarting' in data:
-                match = re.match(r'NewCacheStarting (.*?):(.*)', data)
-                new_address = match.group(1)
-                new_port = int(match.group(2))
-                self.register_node(node_origin, new_address, new_port)
+            if 'request_type' in data and data['request_type'] == 'NewCacheStarting':
+                new_address = data['address']
+                new_port = data['port']
+                self.register_node(node_id, new_address, new_port)
                 init_data = str(self.lru_cache)
-                client_socket.sendall(init_data.encode())
-            elif 'HitUpdate' in data:
-                match = re.match(r'HitUpdate:(.*)', data)
-                data = match.group(1)
-                return_data = self.lru_cache.check_cache(data)
+                client_socket.sendall(pickle.dumps({'data': init_data}))
+            elif 'request_type' in data and data['request_type'] == 'HitUpdate':
+                return_data = self.lru_cache.check_cache(data['key'])
             else:
-                return_data = self.lru_cache.check_cache(data)
-                client_socket.sendall(return_data.encode())
-            if return_data != "Object not found!" and 'NewCacheStarting' not in data:
-                self.update_distributed_caches(data, node_origin)
+                return_data = self.lru_cache.check_cache(data['key'])
+                client_socket.sendall(pickle.dumps({'data': return_data}))
+            if return_data != "Object not found!" and ('request_type' not in data or data['request_type'] != 'NewCacheStarting'):
+                self.update_distributed_caches(data['key'], return_data, node_id)
 
             client_socket.close()
 
-    def update_distributed_caches(self, update, origin):
+    def update_distributed_caches(self, key, data, origin):
         print("updating distributed caches")
+        update = {'key': key, 'data': data}
         for cache_id, cache_info in self.cache_list.items():
             if cache_id != origin:
                 print('update cache {}'.format(cache_id))
                 sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                 sock.connect((cache_info['address'], cache_info['port'] + 1))
-                sock.sendall(update.encode())
+                sock.sendall(pickle.dumps(update))
                 sock.close()
 
     def register_node(self, node_id, address, port):
