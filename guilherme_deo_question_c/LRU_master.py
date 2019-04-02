@@ -12,6 +12,7 @@ class CacheMaster:
 
     def __init__(self, size, db_conn):
         self.cache_list = {}
+        self.cache_lookup = {}
         self.cache_size = size
         self.lru_cache = Cache(self.cache_size, master=True, db_connection=db_conn)
 
@@ -49,16 +50,31 @@ class CacheMaster:
     def update_distributed_caches(self, key, data, origin):
         print("updating distributed caches")
         update = {'key': key, 'data': data}
+        updated_cache_list = dict(self.cache_list)
         for cache_id, cache_info in self.cache_list.items():
+            update['id'] = cache_id
             if cache_id != origin:
-                print('update cache {}'.format(cache_id))
-                sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                sock.connect((cache_info['address'], cache_info['port'] + 1))
-                sock.sendall(pickle.dumps(update))
-                sock.close()
+                try:
+                    print('update cache {}'.format(cache_id))
+                    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                    sock.connect((cache_info['address'], cache_info['port'] + 1))
+                    sock.sendall(pickle.dumps(update))
+                except ConnectionRefusedError as e:
+                    print("CONNECTION REFUSED - Could not contact node {}. \nERROR: {}".format(cache_id, e))
+                    print("Removing node from cache_list")
+                    updated_cache_list.pop(cache_id)
+                finally:
+                    sock.close()
+        self.cache_list = dict(updated_cache_list)
 
     def register_node(self, node_id, address, port):
         self.cache_list[node_id] = {'address': address, 'port': port}
+        # Inversion (key value) for invalidating old cache which had same ip:port
+        inv = '{}:{}'.format(address, port)
+        if inv in self.cache_lookup:
+            self.cache_list.pop(self.cache_lookup[inv])
+            print('Invalidating old cache ({}) on same IP:PORT'.format(self.cache_lookup[inv]))
+        self.cache_lookup[inv] = node_id
 
 
 if __name__ == "__main__":

@@ -56,7 +56,10 @@ class CacheNode:
             data = client_socket.recv(1024)
             data = pickle.loads(data)
             print("Data: {}".format(data))
-            self.lru_cache.check_cache(data['key'], data['data'])
+            if data['id'] == self.lru_cache.cache_id:
+                self.lru_cache.check_cache(data['key'], data['data'])
+            else:
+                print('invalid cache id')
             client_socket.close()
 
     def init_cache(self):
@@ -68,9 +71,10 @@ class CacheNode:
                                             'address': self.address,
                                             'port': self.port}))
             data = db_socket.recv(1024 * self.cache_size)
-            db_socket.close()
         except ConnectionRefusedError as e:
             print("CONNECTION REFUSED - Server is busy. \nERROR: {}".format(e))
+        finally:
+            db_socket.close()
         if data is not None:
             data = pickle.loads(data)
         self.lru_cache.build(data['data'])

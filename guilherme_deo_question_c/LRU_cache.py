@@ -11,6 +11,27 @@ CacheDLL = getattr(cache_dll_module, 'CacheDoubleLinkedList')
 DLLNode = getattr(cache_dll_module, 'Node')
 
 
+class CacheMessage:
+
+    def __init__(self, cache_id=None, request_type=None, key=None, data=None):
+        self.cache_id = cache_id
+        self.request_type = request_type
+        self.key = key
+        self.data = data
+
+    def dumps(self):
+        data = {'id': self.cache_id, 'request_type': self.request_type,
+                'key': self.key, 'data': self.data}
+        return pickle.dumps(data)
+
+    def loads(self, message):
+        data = pickle.loads(message)
+        self.cache_id = data['cache_id']
+        self.request_type = data['request_type']
+        self.key = data['key']
+        self.data = data['data']
+
+
 class Cache:
 
     def __init__(self, size, master=False, db_connection=None):
@@ -23,10 +44,8 @@ class Cache:
         self.cache_dict = {}
 
     def check_cache(self, key, update_data=None):
-        print(key)
-        print(update_data)
         if key in self.cache_dict:
-            if not self.master:
+            if not self.master and update_data is None:
                 self.update_master_hit(key)
             with self.lock:
                 element = self.cache_dict[key]['element']
@@ -40,7 +59,7 @@ class Cache:
                 data = self.get_data_from_db(key)
             else:
                 data = self.request_data_from_db(key)
-            if data is not None and data != '[]':
+            if data is not None and data != 'Object not found!':
                 with self.lock:
                     new_node = DLLNode(key=key, data=data)
                     last_ele = self.cache_dll.fault(new_node)
@@ -58,9 +77,10 @@ class Cache:
             db_socket.sendall(pickle.dumps({'id': self.cache_id,
                                             'request_type': 'HitUpdate',
                                             'key': key}))
-            db_socket.close()
         except ConnectionRefusedError as e:
             print("CONNECTION REFUSED - Server is busy. \nERROR: {}".format(e))
+        finally:
+            db_socket.close()
 
     def request_data_from_db(self, key):
         data = None
@@ -69,9 +89,10 @@ class Cache:
             db_socket.connect(('localhost', 8741))
             db_socket.sendall(pickle.dumps({'id': self.cache_id, 'key': key}))
             data = db_socket.recv(1024)
-            db_socket.close()
         except ConnectionRefusedError as e:
             print("CONNECTION REFUSED - Server is busy. \nERROR: {}".format(e))
+        finally:
+            db_socket.close()
         if data is not None:
             data = pickle.loads(data)
         return data['data']
@@ -79,7 +100,8 @@ class Cache:
     def get_data_from_db(self, key):
         c = self.db_connection.cursor()
         c.execute('SELECT * FROM users WHERE name="{}"'.format(key))
-        return str(c.fetchall())
+        output = c.fetchall()
+        return str(output) if len(output) > 0 else "Object not found!"
 
     def __str__(self):
         node = self.cache_dll.tail
