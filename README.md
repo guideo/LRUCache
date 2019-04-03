@@ -108,3 +108,7 @@ Some parameters are self explanatory, but others are not:
 *I plan to add a video showcasing the solution, which should be done soon (tomorrow).*  
 
 A full explanation of all classes is outside the scope of this README, but one last point that I would like to mention is that the solution uses both a *Dict* and a *DoubleLinkedList* so that each operation on the Cache will have **O(1)** time complexity.
+
+### Missing Features
+
+* Replication of the Cache between MASTERs. If the **replicate** option is set to True, we should have the same Cache available on all Nodes and Masters, but at this moment, Masters are not updating each other. 
