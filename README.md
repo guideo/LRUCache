@@ -65,8 +65,8 @@ LRU_node.py address port master_address master_port
 * **master_port**: The port of the MASTER which this node will contact.  
 
 As an example, using the previous started MASTER, we can call it like  
-`LRU_node.py localhost 8730 localhost 8740`
-**Important Note**: A Node might use two ports (the second one is incremented by 1) if the **replicate** value is set on the *LRU.config* file (explained below).
+`LRU_node.py localhost 8730 localhost 8740`  
+**Important Note**: A Node might use two ports (the second one is incremented by 1) if the **replicate** value is set to True on the *LRU.config* file (explained below).
 
 3. **Client:** The client should only be concerned about requesting data and receiving an answer. Due to this, the client code is really simple, and we can call a client test execution as:
 ```bash
