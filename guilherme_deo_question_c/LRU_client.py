@@ -1,6 +1,7 @@
 import socket
 import pickle
 import json
+import ast
 
 
 class CacheClient:
@@ -23,4 +24,4 @@ class CacheClient:
             print("CONNECTION REFUSED - Server is busy. \nERROR: {}".format(e))
         finally:
             sock.close()
-        return data['data'] if key != 'print' else 'printed on node'
+        return ast.literal_eval(data['data']) if key != 'print' else 'printed on node'

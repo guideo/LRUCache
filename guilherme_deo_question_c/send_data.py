@@ -7,7 +7,7 @@ if __name__ == "__main__":
         try:
             key = input('Message to send: ')
             sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            sock.connect(('192.168.15.10', 8730))
+            sock.connect(('localhost', 8730))
             sock.sendall(pickle.dumps({'key': key}))
             print("Sent data: {}".format(key))
             data = sock.recv(1024)
