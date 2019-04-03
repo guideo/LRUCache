@@ -39,9 +39,9 @@ The **output** will be a string stating if version_1 is either **Greater**, **Sm
 
 **Note:** *This function is considering the same rules as Python for checking if bigger or small, which means that small case letters are bigger than upper case, and that numbers are smaller than letters.*  
 ```python
-'z' > 'a' > 'Z' > 'A' > '1' --- 0-9<A-Z<a-z
+'z' > 'a' > 'Z' > 'A' > '1' - 0-9<A-Z<a-z
 ```
-*Also, the characters `. , - _` are considered as version separator*
+*Also, the characters `. , - _` are considered as version separators*
 
 ### Question C
 For question C, we have separated modules for each Cache element:
@@ -66,6 +66,7 @@ LRU_node.py address port master_address master_port
 
 As an example, using the previous started MASTER, we can call it like  
 `LRU_node.py localhost 8730 localhost 8740`
+**Important Note**: A Node might use two ports (the second one is incremented by 1) if the **replicate** value is set on the *LRU.config* file (explained below).
 
 3. **Client:** The client should only be concerned about requesting data and receiving an answer. Due to this, the client code is really simple, and we can call a client test execution as:
 ```bash
@@ -98,7 +99,7 @@ There is a config file (*LRU.config*) responsible for a set of parameters for th
 Some parameters are self explanatory, but others are not:
 * **db**: The database which the MASTER will access must be in the same place as the code;
 * **hard_expire**: This configuration sets if we should invalidate the data after the expiration time, even if the Cache had this data requested recently. This helps with issues regarding Distributed Cache Invalidation.
-* **replicate**: **VERY IMPORTANT** - I might have misunderstood the requirements for this question, and implemented the Caches in a way where all data in all nodes will be the same (which seemed to be harder). This means that when a Node is hit, it will tell the MASTER to update **ALL** other nodes to reflect the same info. If this is the desired behavior, set this to **TRUE**, otherwise set to **FALSE** and the Nodes will operate fully separated.
+* **replicate**: **VERY IMPORTANT** - I might have misunderstood the requirements for this question, and implemented the Caches in a way where all data in all nodes will be the same (which seemed to be harder). This means that when a Node is hit, it will tell the MASTER to update **ALL** other nodes to reflect the same info. If this is the desired behavior, set this to **TRUE**, otherwise set to **FALSE** and the Nodes will operate fully separated. If set to True, each Node will have an additional port being used to listen to updates from the MASTER.
 
 *I plan to add a video showcasing the solution, which should be done soon (tomorrow).*  
 
