@@ -5,6 +5,10 @@ This is a collection of solutions to the Ormuco challenges:
 1. **Question B:** Checking one version string against another;
 1. **Question C:** Geo Distributed LRU cache with time expiration;
 
+## Requirements
+
+Python version 3 (developed using 3.7.3)
+
 ## Installation
 
 I've tried my best to use only Python basic libraries, and as far as I know I've achieved it on a Windows Installation, so there is no need to '*pip install*' anything at this moment.  
