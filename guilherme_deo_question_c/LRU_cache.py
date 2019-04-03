@@ -34,14 +34,14 @@ class CacheMessage:
 
 
 class Cache:
-    master_list = {}
-    master_lookup = {}
 
-    def __init__(self, master=False):
+    def __init__(self, master=False, master_address=None, master_port=None):
         self.cache_id = uuid.uuid4().hex
         self.master = master
         self.lock = Lock()
         self.cache_dict = {}
+        self.master_address = master_address
+        self.master_port = master_port
 
         with open('LRU.config') as json_file:
             config_data = json.load(json_file)
@@ -53,8 +53,6 @@ class Cache:
             self.max_size = config_data['max_size_of_cache']
             self.cache_dll = CacheDLL(self.max_size)
             self.expiration_seconds = config_data['cache_expiration_time_seconds']
-            self.master_address = config_data['master_address']
-            self.master_port = config_data['master_port']
             self.data_size = config_data['max_size_of_data']
             self.hard_expire = config_data['hard_expire']
             self.replicate = config_data['replicate']
@@ -149,7 +147,6 @@ class Cache:
 
     def build(self, string_representation):
         ele_dict = json.loads(string_representation)
-        print(ele_dict)
         for key, data in ele_dict.items():
             new_node = DLLNode(key=key, data=data['data'])
             self.cache_dll.fault(new_node)

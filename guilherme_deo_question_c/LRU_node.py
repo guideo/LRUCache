@@ -10,9 +10,12 @@ Cache = getattr(cache_module, 'Cache')
 
 
 def parse_input(args):
-    parser = argparse.ArgumentParser(description='Receives an address and port and start a Cache Node')
+    parser = argparse.ArgumentParser(description='Receives an address and port for the Cache Node and an additional' +
+                                                 'address and port for the Master to connect to.')
     parser.add_argument('address', type=str, help='String for the address')
     parser.add_argument('port', type=int, help='Integer for the port')
+    parser.add_argument('master_address', type=str, help='String for the MASTER address')
+    parser.add_argument('master_port', type=int, help='Integer for the MASTER port')
 
     parsed = parser.parse_args(args)
     return parsed
@@ -20,10 +23,10 @@ def parse_input(args):
 
 class CacheNode:
 
-    def __init__(self, address, port):
+    def __init__(self, address, port, m_address, m_port):
         self.port = port
         self.address = address
-        self.lru_cache = Cache()
+        self.lru_cache = Cache(master_address=m_address, master_port=m_port)
 
     def listen_for_calls(self):
         server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -81,12 +84,12 @@ class CacheNode:
         if data is not None:
             data = pickle.loads(data)
         self.lru_cache.build(data['data'])
-        print(data)
+        print('Received init data: {}'.format(data))
 
 
 if __name__ == "__main__":
     info = parse_input(sys.argv[1:])
-    cache_node = CacheNode(info.address, info.port)
+    cache_node = CacheNode(info.address, info.port, info.master_address, info.master_port)
 
     cache_node.init_cache()
 

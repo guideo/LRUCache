@@ -91,6 +91,7 @@ class CacheMaster:
 
 if __name__ == "__main__":
     info = parse_input(sys.argv[1:])
+    print('Starting MASTER at {}:{}'.format(info.address, info.port))
     cache_master = CacheMaster(info.address, info.port)
 
     cache_master.listen_for_calls()
