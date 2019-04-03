@@ -1,21 +1,34 @@
 import socket
 import importlib
 import pickle
+import argparse
+import sys
 
 cache_module = importlib.import_module('LRU_cache')
 Cache = getattr(cache_module, 'Cache')
 
 
+def parse_input(args):
+    parser = argparse.ArgumentParser(description='Receives an address and port and start a Cache Master')
+    parser.add_argument('address', type=str, help='String for the address')
+    parser.add_argument('port', type=int, help='Integer for the port')
+
+    parsed = parser.parse_args(args)
+    return parsed
+
+
 class CacheMaster:
 
-    def __init__(self):
+    def __init__(self, address, port):
+        self.address = address
+        self.port = port
         self.cache_list = {}
         self.cache_lookup = {}
         self.lru_cache = Cache(master=True)
 
     def listen_for_calls(self):
         server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        server_socket.bind((self.lru_cache.master_address, self.lru_cache.master_port))
+        server_socket.bind((self.address, self.port))
 
         server_socket.listen(5)
         while True:
@@ -77,6 +90,7 @@ class CacheMaster:
 
 
 if __name__ == "__main__":
-    cache_master = CacheMaster()
+    info = parse_input(sys.argv[1:])
+    cache_master = CacheMaster(info.address, info.port)
 
     cache_master.listen_for_calls()

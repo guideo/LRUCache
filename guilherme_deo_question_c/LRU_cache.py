@@ -34,6 +34,8 @@ class CacheMessage:
 
 
 class Cache:
+    master_list = {}
+    master_lookup = {}
 
     def __init__(self, master=False):
         self.cache_id = uuid.uuid4().hex
