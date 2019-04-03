@@ -54,15 +54,25 @@ class Cache:
             self.master_address = config_data['master_address']
             self.master_port = config_data['master_port']
             self.data_size = config_data['max_size_of_data']
+            self.hard_expire = config_data['hard_expire']
             self.replicate = config_data['replicate']
 
     def clear_outdated_data(self):
         node = self.cache_dll.tail
-        while node and (time.time() - self.expiration_seconds) > self.cache_dict[node.key]['timestamp']:
-            removed_ele = self.cache_dll.delete_last()
-            print('Clearing outdated data: {}'.format(removed_ele))
-            self.cache_dict.pop(removed_ele)
-            node = self.cache_dll.tail
+        if self.hard_expire:
+            while node:
+                aux_node = node.prev_node
+                if (time.time() - self.expiration_seconds) > self.cache_dict[node.key]['timestamp']:
+                    removed_ele = self.cache_dll.delete_ele(node)
+                    print('Clearing outdated data: {}'.format(removed_ele))
+                    self.cache_dict.pop(removed_ele)
+                node = aux_node
+        else:
+            while node and (time.time() - self.expiration_seconds) > self.cache_dict[node.key]['timestamp']:
+                removed_ele = self.cache_dll.delete_last()
+                print('Clearing outdated data: {}'.format(removed_ele))
+                self.cache_dict.pop(removed_ele)
+                node = self.cache_dll.tail
 
     def check_cache(self, key, update_data=None):
         with self.lock:
@@ -71,7 +81,8 @@ class Cache:
                 if not self.master and update_data is None:
                     self.update_master_hit(key)
                 element = self.cache_dict[key]['element']
-                self.cache_dict[key]['timestamp'] = time.time()
+                if not self.hard_expire:
+                    self.cache_dict[key]['timestamp'] = time.time()
                 self.cache_dll.hit(element)
                 return element.data
             else:
@@ -130,13 +141,14 @@ class Cache:
         node = self.cache_dll.tail
         output = {}
         while node:
-            output[node.key] = node.data
+            output[node.key] = {'data': node.data, 'timestamp': self.cache_dict[node.key]['timestamp']}
             node = node.prev_node
         return json.dumps(output)
 
     def build(self, string_representation):
         ele_dict = json.loads(string_representation)
+        print(ele_dict)
         for key, data in ele_dict.items():
-            new_node = DLLNode(key=key, data=data)
+            new_node = DLLNode(key=key, data=data['data'])
             self.cache_dll.fault(new_node)
-            self.cache_dict[key] = {'element': new_node, 'timestamp': time.time()}
+            self.cache_dict[key] = {'element': new_node, 'timestamp': data['timestamp']}

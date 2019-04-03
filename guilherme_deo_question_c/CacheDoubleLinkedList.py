@@ -27,6 +27,26 @@ class CacheDoubleLinkedList:
         gc.collect()
         return deleted_ele
 
+    def delete_ele(self, ele):
+        self.size -= 1
+        deleted_ele = ele.key
+        if ele.next_node:
+            ele.next_node.prev_node = ele.prev_node
+        if ele.prev_node:
+            ele.prev_node.next_node = ele.next_node
+        if self.head == ele:
+            if ele.next_node:
+                self.head = ele.next_node
+            else:
+                self.head = None
+        if self.tail == ele:
+            if ele.prev_node:
+                self.tail = ele.prev_node
+            else:
+                self.tail = None
+        gc.collect()
+        return deleted_ele
+
     def hit(self, node):
         if node == self.head:
             return
