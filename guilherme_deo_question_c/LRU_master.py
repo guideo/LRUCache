@@ -45,6 +45,8 @@ class CacheMaster:
             client_socket.close()
 
     def update_distributed_caches(self, key, data, origin):
+        if not self.lru_cache.replicate:
+            return
         print("updating distributed caches")
         update = {'key': key, 'data': data}
         updated_cache_list = dict(self.cache_list)

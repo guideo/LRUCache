@@ -54,6 +54,7 @@ class Cache:
             self.master_address = config_data['master_address']
             self.master_port = config_data['master_port']
             self.data_size = config_data['max_size_of_data']
+            self.replicate = config_data['replicate']
 
     def clear_outdated_data(self):
         node = self.cache_dll.tail
@@ -69,7 +70,6 @@ class Cache:
             if key in self.cache_dict:
                 if not self.master and update_data is None:
                     self.update_master_hit(key)
-
                 element = self.cache_dict[key]['element']
                 self.cache_dict[key]['timestamp'] = time.time()
                 self.cache_dll.hit(element)
@@ -92,6 +92,8 @@ class Cache:
                     return "Object not found!"
 
     def update_master_hit(self, key):
+        if not self.replicate:
+            return
         try:
             db_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             db_socket.connect((self.master_address, self.master_port))

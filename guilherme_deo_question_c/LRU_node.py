@@ -45,6 +45,8 @@ class CacheNode:
             client_socket.close()
 
     def listen_for_updates(self):
+        if not self.lru_cache.replicate:
+            return
         server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         server_socket.bind((self.address, self.port + 1))
 
@@ -62,6 +64,8 @@ class CacheNode:
             client_socket.close()
 
     def init_cache(self):
+        if not self.lru_cache.replicate:
+            return
         try:
             db_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             db_socket.connect((self.lru_cache.master_address, self.lru_cache.master_port))
