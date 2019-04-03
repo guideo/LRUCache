@@ -24,7 +24,7 @@ class CacheMaster:
         self.port = port
         self.cache_list = {}
         self.cache_lookup = {}
-        self.lru_cache = Cache(master=True)
+        self.lru_cache = Cache(self.address, self.port, master=True)
 
     def listen_for_calls(self):
         server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -60,8 +60,25 @@ class CacheMaster:
     def update_distributed_caches(self, key, data, origin):
         if not self.lru_cache.replicate:
             return
-        print("updating distributed caches")
         update = {'key': key, 'data': data}
+
+        updated_master_list = dict(Cache.master_list)
+        for master_id, master_info in Cache.master_list.items():
+            update['id'] = master_id
+            if master_id != self.lru_cache.cache_id:
+                try:
+                    print('update cache {}'.format(master_id))
+                    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                    sock.connect((master_info['address'], master_info['port'] + 1))
+                    sock.sendall(pickle.dumps(update))
+                except ConnectionRefusedError as e:
+                    print("CONNECTION REFUSED - Could not contact MASTER {}. \nERROR: {}".format(master_id, e))
+                    print("Removing MASTER from master_list")
+                    updated_master_list.pop(master_id)
+                finally:
+                    sock.close()
+        Cache.master_list = dict(updated_master_list)
+
         updated_cache_list = dict(self.cache_list)
         for cache_id, cache_info in self.cache_list.items():
             update['id'] = cache_id

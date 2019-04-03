@@ -5,7 +5,8 @@ import uuid
 import json
 import pickle
 import sqlite3
-from threading import Lock
+from random import randint
+from threading import Lock, Thread
 
 cache_dll_module = importlib.import_module('CacheDoubleLinkedList')
 CacheDLL = getattr(cache_dll_module, 'CacheDoubleLinkedList')
@@ -37,8 +38,10 @@ class Cache:
     master_list = {}
     master_lookup = {}
 
-    def __init__(self, master=False):
+    def __init__(self, address, port, master=False):
         self.cache_id = uuid.uuid4().hex
+        self.address = address
+        self.port = port
         self.master = master
         self.lock = Lock()
         self.cache_dict = {}
@@ -53,11 +56,34 @@ class Cache:
             self.max_size = config_data['max_size_of_cache']
             self.cache_dll = CacheDLL(self.max_size)
             self.expiration_seconds = config_data['cache_expiration_time_seconds']
-            self.master_address = config_data['master_address']
-            self.master_port = config_data['master_port']
             self.data_size = config_data['max_size_of_data']
             self.hard_expire = config_data['hard_expire']
             self.replicate = config_data['replicate']
+
+        self.init_cache()
+
+        print(Cache.master_list)
+        print(Cache.master_list == True)
+        if not Cache.master_list and not self.master:
+            print('There is no master registered yet.')
+            print('Please start a Master Cache before trying to start a Node.')
+            return
+        elif not self.master:
+            selected_master = randint(0, len(Cache.master_list))
+            self.master_address = Cache.master_list[selected_master]['address']
+            self.master_port = Cache.master_list[selected_master]['port']
+        else:
+            print('here')
+            Cache.master_list[self.cache_id] = {'address': self.address, 'port': self.port}
+            inv = '{}:{}'.format(self.address, self.port)
+            if inv in Cache.master_lookup:
+                Cache.master_list.pop(Cache.master_lookup[inv])
+                print('Invalidating old MASTER ({}) on same IP:PORT'.format(Cache.master_lookup[inv]))
+            Cache.master_lookup[inv] = self.cache_id
+            print(Cache.master_list)
+
+        thread = Thread(target=self.listen_for_updates)
+        thread.start()
 
     def clear_outdated_data(self):
         node = self.cache_dll.tail
@@ -103,6 +129,48 @@ class Cache:
                     return new_node.data
                 else:
                     return "Object not found!"
+
+    def listen_for_updates(self):
+        if not self.replicate:
+            return
+        server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        server_socket.bind((self.address, self.port + 1))
+
+        server_socket.listen(5)
+        while True:
+            print("Waiting for updates...")
+            client_socket, address = server_socket.accept()
+            data = client_socket.recv(self.data_size)
+            data = pickle.loads(data)
+            print("Data: {}".format(data))
+            if data['id'] == self.cache_id:
+                self.check_cache(data['key'], data['data'])
+            else:
+                print('invalid cache id')
+            client_socket.close()
+
+    def init_cache(self):
+        if not self.replicate:
+            return
+        if not Cache.master_list:
+            print('No MASTER node found')
+            return
+        try:
+            db_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            db_socket.connect((self.master_address, self.master_port))
+            db_socket.sendall(pickle.dumps({'id': self.cache_id,
+                                            'request_type': 'NewCacheStarting',
+                                            'address': self.address,
+                                            'port': self.port}))
+            data = db_socket.recv(self.data_size * self.max_size)
+        except ConnectionRefusedError as e:
+            print("CONNECTION REFUSED - Server is busy. \nERROR: {}".format(e))
+        finally:
+            db_socket.close()
+        if data is not None:
+            data = pickle.loads(data)
+        self.build(data['data'])
+        print(data)
 
     def update_master_hit(self, key):
         if not self.replicate:
