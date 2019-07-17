@@ -1,9 +1,4 @@
-# guilherme_deo_ormuco
-
-This is a collection of solutions to the Ormuco challenges:
-1. **Question A:** Finding if lines intersect;
-1. **Question B:** Checking one version string against another;
-1. **Question C:** Geo Distributed LRU cache with time expiration;
+# Geo Distributed LRU Cache with Time Expiration
 
 ## Requirements
 
@@ -17,38 +12,7 @@ Simply clone the repo and run the desired solution.
 
 ## Usage
 
-### Question A
-In order to run Question A, simply call it in the prompt as:
-
-```bash
-guilherme_deo_question_a.py line1_start line1_end line2_start line2_end
-```
-* **line1_start**: Integer for the X position where line 1 starts
-* **line1_end**: Integer for the X position where line 1 ends
-* **line2_start**: Integer for the X position where line 2 starts
-* **line2_end**: Integer for the X position where line 2 ends
-
-The **output** will be either **True** (if lines overlap) or **False** (if they do not).
-
-### Question B
-In order to run Question B, simply call it in the prompt as:
-
-```bash
-guilherme_deo_question_b.py version_1 version_2
-```
-* **version_1**: String representing first version to compare
-* **version_2**: String representing second version to compare
-
-The **output** will be a string stating if version_1 is either **Greater**, **Smaller** or **Equal** to version_2.  
-
-**Note:** *This function is considering the same rules as Python for checking if bigger or small, which means that small case letters are bigger than upper case, and that numbers are smaller than letters.*  
-```python
-'z' > 'a' > 'Z' > 'A' > '1' - 0-9<A-Z<a-z
-```
-*Also, the characters `. , - _` are considered as version separators*
-
-### Question C
-For question C, we have separated modules for each Cache element:
+We have separated modules for each Cache element:
 1. **Master:** The master is responsible for accessing the DB, retrieving a value from it and sending it over to the nodes. At least one master should receive the requests from a node.  
 To start a master, run the following code in a terminal:
 ```bash
@@ -103,9 +67,7 @@ There is a config file (*LRU.config*) responsible for a set of parameters for th
 Some parameters are self explanatory, but others are not:
 * **db**: The database which the MASTER will access must be in the same place as the code;
 * **hard_expire**: This configuration sets if we should invalidate the data after the expiration time, even if the Cache had this data requested recently. This helps with issues regarding Distributed Cache Invalidation.
-* **replicate**: **VERY IMPORTANT** - I might have misunderstood the requirements for this question, and implemented the Caches in a way where all data in all nodes will be the same (which seemed to be harder). This means that when a Node is hit, it will tell the MASTER to update **ALL** other nodes to reflect the same info. If this is the desired behavior, set this to **TRUE**, otherwise set to **FALSE** and the Nodes will operate fully separated. If set to True, each Node will have an additional port being used to listen to updates from the MASTER.
-
-*I plan to add a video showcasing the solution, which should be done soon (tomorrow).*  
+* **replicate**: **VERY IMPORTANT** - I've implemented the Caches in a way where all data in all nodes will be the same (which seemed to be harder). This means that when a Node is hit, it will tell the MASTER to update **ALL** other nodes to reflect the same info. If this is the desired behavior, set this to **TRUE**, otherwise set to **FALSE** and the Nodes will operate fully separated. If set to True, each Node will have an additional port being used to listen to updates from the MASTER.
 
 A full explanation of all classes is outside the scope of this README, but one last point that I would like to mention is that the solution uses both a *Dict* and a *DoubleLinkedList* so that each operation on the Cache will have **O(1)** time complexity.
 
